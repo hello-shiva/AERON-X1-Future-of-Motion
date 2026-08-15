@@ -1,0 +1,1376 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>AERON X1 — Built for the Next Century</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300..700&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#05070a;
+    --panel:#0b0f16;
+    --panel-2:#0e1420;
+    --ink:#f0f3f8;
+    --ink-dim:#8792a6;
+    --ink-faint:#4b5568;
+    --photon:#5b8def;
+    --photon-dim:rgba(91,141,239,0.35);
+    --ember:#ff6a3d;
+    --line:rgba(255,255,255,0.08);
+    --line-strong:rgba(255,255,255,0.16);
+    --display:'Space Grotesk', sans-serif;
+    --body:'Inter', sans-serif;
+    --mono:'JetBrains Mono', monospace;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html,body{
+    background:var(--void);
+    color:var(--ink);
+    font-family:var(--body);
+    overflow-x:hidden;
+    width:100%;
+    scrollbar-width:none;
+  }
+  body::-webkit-scrollbar{display:none;}
+  ::selection{background:var(--photon-dim);color:#fff;}
+
+  a{color:inherit;text-decoration:none;}
+  button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit;}
+
+  /* ---------- CANVAS LAYER (fixed, always behind content) ---------- */
+  #scene-root{
+    position:fixed;
+    inset:0;
+    width:100vw;
+    height:100vh;
+    z-index:1;
+  }
+  #scene-root canvas{display:block;width:100%;height:100%;}
+
+  .vignette{
+    position:fixed;inset:0;z-index:2;pointer-events:none;
+    background:radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.55) 100%);
+  }
+  .grain{
+    position:fixed;inset:0;z-index:3;pointer-events:none;opacity:0.035;mix-blend-mode:overlay;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* ---------- LOADING SCREEN ---------- */
+  #loader{
+    position:fixed;inset:0;z-index:100;
+    background:var(--void);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+    transition:opacity 1s ease, visibility 1s ease;
+  }
+  #loader.hidden{opacity:0;visibility:hidden;pointer-events:none;}
+  .loader-mark{
+    font-family:var(--display);font-weight:600;font-size:15vw;letter-spacing:0.02em;
+    color:var(--ink);line-height:1;
+    max-font-size:120px;
+  }
+  @media(min-width:700px){ .loader-mark{font-size:96px;} }
+  .loader-status{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.18em;color:var(--ink-dim);
+    text-transform:uppercase;
+  }
+  .loader-bar-track{
+    width:260px;height:1px;background:var(--line);position:relative;overflow:hidden;
+  }
+  .loader-bar-fill{
+    position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--photon);
+    box-shadow:0 0 12px var(--photon);
+  }
+  .loader-pct{font-family:var(--mono);font-size:11px;color:var(--photon);letter-spacing:0.1em;}
+
+  /* ---------- NAV ---------- */
+  #nav{
+    position:fixed;top:0;left:0;right:0;z-index:40;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:22px 28px;
+    mix-blend-mode:difference;
+    transition:transform 0.6s ease;
+  }
+  #nav .logo{
+    font-family:var(--display);font-weight:600;font-size:16px;letter-spacing:0.24em;
+    cursor:pointer;user-select:none;
+  }
+  #nav .links{display:flex;gap:34px;}
+  #nav .links a{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+    color:var(--ink-dim);transition:color 0.3s ease;
+  }
+  #nav .links a:hover{color:var(--ink);}
+  #nav .right{display:flex;align-items:center;gap:18px;}
+  #sound-toggle{
+    font-family:var(--mono);font-size:10px;letter-spacing:0.12em;color:var(--ink-dim);
+    border:1px solid var(--line-strong);padding:6px 12px;border-radius:20px;
+    display:flex;align-items:center;gap:6px;transition:all .3s ease;
+  }
+  #sound-toggle:hover{color:var(--ink);border-color:var(--ink-dim);}
+  #nav-burger{display:none;font-family:var(--mono);font-size:11px;letter-spacing:0.14em;}
+  @media(max-width:800px){
+    #nav .links{display:none;}
+    #nav-burger{display:block;}
+  }
+
+  /* ---------- CONTENT SCROLL LAYER ---------- */
+  #content{position:relative;z-index:10;width:100%;}
+  section{
+    position:relative;width:100%;min-height:100vh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding:0 8vw;
+  }
+
+  .eyebrow{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.22em;text-transform:uppercase;
+    color:var(--photon);margin-bottom:22px;display:flex;align-items:center;gap:10px;
+  }
+  .eyebrow::before{content:'';width:22px;height:1px;background:var(--photon);}
+
+  /* HERO */
+  #hero{align-items:flex-start;padding-top:0;}
+  #hero .hero-inner{max-width:900px;}
+  .hero-title{
+    font-family:var(--display);font-weight:700;
+    font-size:clamp(52px, 11vw, 148px);
+    line-height:0.92;letter-spacing:-0.01em;
+    color:var(--ink);
+  }
+  .hero-sub{
+    font-family:var(--display);font-weight:400;font-size:clamp(14px,2vw,20px);
+    letter-spacing:0.04em;color:var(--ink-dim);margin-top:20px;max-width:420px;
+  }
+  .hero-support{
+    font-family:var(--body);font-weight:300;font-size:15px;color:var(--ink-faint);
+    margin-top:14px;max-width:380px;line-height:1.6;
+  }
+  .hero-ctas{display:flex;gap:16px;margin-top:44px;flex-wrap:wrap;}
+  .btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.14em;text-transform:uppercase;
+    padding:16px 30px;border-radius:2px;transition:all .35s cubic-bezier(.2,.8,.2,1);
+  }
+  .btn-primary{background:var(--ink);color:var(--void);}
+  .btn-primary:hover{background:var(--photon);color:#fff;transform:translateY(-2px);}
+  .btn-ghost{border:1px solid var(--line-strong);color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--photon);color:var(--photon);}
+
+  .scroll-cue{
+    position:absolute;bottom:38px;left:8vw;
+    font-family:var(--mono);font-size:10px;letter-spacing:0.18em;color:var(--ink-faint);
+    display:flex;align-items:center;gap:10px;
+  }
+  .scroll-cue .line{width:1px;height:34px;background:linear-gradient(var(--photon),transparent);}
+
+  /* narrative scenes */
+  .scene{align-items:flex-start;}
+  .scene-text{max-width:640px;}
+  .scene-title{
+    font-family:var(--display);font-weight:600;
+    font-size:clamp(30px,5.2vw,64px);line-height:1.04;letter-spacing:-0.005em;
+  }
+  .scene-body{font-family:var(--body);font-weight:300;font-size:15.5px;color:var(--ink-dim);
+    line-height:1.7;margin-top:18px;max-width:420px;}
+  .scene[data-align="right"] .scene-text{margin-left:auto;text-align:right;}
+  .scene[data-align="right"] .eyebrow{justify-content:flex-end;}
+  .scene[data-align="right"] .eyebrow::before{order:2;}
+  .scene[data-align="center"]{align-items:center;}
+  .scene[data-align="center"] .scene-text{text-align:center;margin:0 auto;}
+  .scene[data-align="center"] .eyebrow{justify-content:center;}
+
+  /* component labels floating layer (Scene 02) */
+  .labels-layer{position:absolute;inset:0;pointer-events:none;z-index:11;}
+  .comp-label{
+    position:absolute;font-family:var(--mono);font-size:10.5px;letter-spacing:0.1em;
+    color:var(--ink);text-transform:uppercase;opacity:0;transform:translateY(6px);
+    transition:opacity .6s ease, transform .6s ease;white-space:nowrap;
+  }
+  .comp-label .dot{width:5px;height:5px;border-radius:50%;background:var(--photon);
+    display:inline-block;margin-right:8px;box-shadow:0 0 8px var(--photon);}
+  .comp-label.visible{opacity:1;transform:translateY(0);}
+
+  /* Power stats */
+  .stat-row{display:flex;gap:64px;flex-wrap:wrap;margin-top:36px;}
+  .stat{font-family:var(--display);}
+  .stat-num{font-size:clamp(34px,6vw,72px);font-weight:700;font-variant-numeric:tabular-nums;
+    background:linear-gradient(180deg,var(--ink),var(--ink-dim));-webkit-background-clip:text;background-clip:text;color:transparent;}
+  .stat-label{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;color:var(--ink-faint);
+    text-transform:uppercase;margin-top:6px;}
+
+  /* Intelligence data streams */
+  .data-panel{
+    border:1px solid var(--line);background:rgba(11,15,22,0.5);backdrop-filter:blur(6px);
+    padding:22px 24px;margin-top:28px;max-width:420px;
+  }
+  .data-line{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;
+    color:var(--ink-dim);padding:9px 0;border-bottom:1px solid var(--line);}
+  .data-line:last-child{border-bottom:none;}
+  .data-line span:last-child{color:var(--photon);}
+
+  /* CONFIGURATOR */
+  #configurator{align-items:center;}
+  .config-panel{
+    width:100%;max-width:520px;margin-left:auto;
+    border:1px solid var(--line);background:rgba(11,15,22,0.55);backdrop-filter:blur(10px);
+    padding:34px;
+  }
+  .config-group{margin-bottom:26px;}
+  .config-group:last-of-type{margin-bottom:0;}
+  .config-group-label{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;
+    text-transform:uppercase;color:var(--ink-faint);margin-bottom:12px;}
+  .swatch-row{display:flex;gap:10px;flex-wrap:wrap;}
+  .swatch{
+    width:34px;height:34px;border-radius:50%;border:2px solid transparent;cursor:pointer;
+    transition:transform .25s ease, border-color .25s ease;position:relative;
+  }
+  .swatch:hover{transform:scale(1.1);}
+  .swatch.active{border-color:var(--ink);}
+  .opt-row{display:flex;gap:8px;flex-wrap:wrap;}
+  .opt-btn{
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.08em;text-transform:uppercase;
+    padding:9px 14px;border:1px solid var(--line-strong);color:var(--ink-dim);
+    transition:all .25s ease;
+  }
+  .opt-btn:hover{color:var(--ink);border-color:var(--ink-dim);}
+  .opt-btn.active{background:var(--ink);color:var(--void);border-color:var(--ink);}
+  .config-summary{margin-top:26px;padding-top:22px;border-top:1px solid var(--line);
+    font-family:var(--mono);font-size:11px;color:var(--ink-dim);display:flex;flex-direction:column;gap:6px;}
+  .config-summary b{color:var(--ink);font-weight:500;}
+
+  /* Inspect mode */
+  #inspect-toggle{
+    position:fixed;bottom:32px;right:32px;z-index:35;
+    font-family:var(--mono);font-size:11px;letter-spacing:0.12em;text-transform:uppercase;
+    border:1px solid var(--line-strong);padding:14px 22px;border-radius:30px;
+    background:rgba(5,7,10,0.6);backdrop-filter:blur(8px);
+    display:flex;align-items:center;gap:10px;transition:all .3s ease;
+  }
+  #inspect-toggle:hover{border-color:var(--photon);color:var(--photon);}
+  #inspect-toggle.active{background:var(--photon);color:#fff;border-color:var(--photon);}
+  .pulse-dot{width:6px;height:6px;border-radius:50%;background:var(--photon);animation:pulse 1.8s infinite;}
+  @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+
+  #inspect-panel{
+    position:fixed;z-index:36;bottom:100px;right:32px;
+    width:280px;border:1px solid var(--line-strong);background:rgba(8,11,16,0.75);
+    backdrop-filter:blur(14px);padding:22px;
+    opacity:0;transform:translateY(14px);pointer-events:none;transition:all .4s cubic-bezier(.2,.8,.2,1);
+  }
+  #inspect-panel.visible{opacity:1;transform:translateY(0);pointer-events:auto;}
+  #inspect-panel .part-name{font-family:var(--mono);font-size:10px;letter-spacing:0.14em;
+    color:var(--photon);text-transform:uppercase;}
+  #inspect-panel .part-title{font-family:var(--display);font-size:19px;font-weight:600;margin-top:8px;}
+  #inspect-panel .part-desc{font-family:var(--body);font-size:12.5px;color:var(--ink-dim);
+    margin-top:8px;line-height:1.6;}
+
+  /* ENTER THE MACHINE */
+  #machine-cta{align-items:center;text-align:center;}
+  #machine-cta .scene-text{max-width:560px;margin:0 auto;text-align:center;}
+  #machine-cta .eyebrow{justify-content:center;}
+
+  #cockpit{
+    position:fixed;inset:0;z-index:80;background:var(--void);
+    opacity:0;pointer-events:none;transition:opacity .9s ease;
+  }
+  #cockpit.active{opacity:1;pointer-events:auto;}
+  .hud{
+    position:absolute;inset:0;pointer-events:none;
+    font-family:var(--mono);color:var(--photon);
+  }
+  .hud-corner{
+    position:absolute;font-size:11px;letter-spacing:0.12em;max-width:38vw;
+    padding-top: env(safe-area-inset-top,0px);
+  }
+  .hud-tl{top:28px;left:28px;} .hud-tr{top:28px;right:28px;text-align:right;}
+  .hud-bl{bottom:calc(28px + env(safe-area-inset-bottom,0px));left:28px;}
+  .hud-br{bottom:calc(28px + env(safe-area-inset-bottom,0px));right:28px;text-align:right;}
+  .hud-speed{
+    position:absolute;bottom:calc(150px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);text-align:center;
+  }
+  .hud-speed .num{font-family:var(--display);font-size:64px;font-weight:700;color:var(--ink);line-height:1;}
+  .hud-speed .lbl{font-size:10px;letter-spacing:0.2em;color:var(--photon);margin-top:2px;}
+  .hud-line{opacity:.85;margin-bottom:4px;}
+  .hud-value{color:var(--ink);}
+  #exit-machine{
+    position:absolute;bottom:calc(60px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);pointer-events:auto;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:0.14em;text-transform:uppercase;
+    border:1px solid var(--photon-dim);padding:10px 22px;color:var(--photon);
+    background:rgba(5,7,10,0.55);backdrop-filter:blur(6px);white-space:nowrap;z-index:2;
+  }
+  #exit-machine:hover{background:var(--photon);color:#fff;}
+  .hud-ring{
+    position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:min(70vw,620px);height:min(70vw,620px);border:1px solid var(--photon-dim);
+    border-radius:50%;
+  }
+  .hud-ring::before{
+    content:'';position:absolute;inset:14px;border:1px solid rgba(91,141,239,0.15);border-radius:50%;
+  }
+  @media(max-width:640px){
+    .hud-corner{font-size:9.5px;max-width:44vw;}
+    .hud-tl{top:20px;left:20px;} .hud-tr{top:20px;right:20px;}
+    .hud-bl{bottom:calc(20px + env(safe-area-inset-bottom,0px));left:20px;}
+    .hud-br{bottom:calc(20px + env(safe-area-inset-bottom,0px));right:20px;}
+    .hud-speed{bottom:calc(120px + env(safe-area-inset-bottom,0px));}
+    .hud-speed .num{font-size:46px;}
+    .hud-ring{width:80vw;height:80vw;}
+    #exit-machine{bottom:calc(50px + env(safe-area-inset-bottom,0px));font-size:9.5px;padding:9px 16px;}
+  }
+
+  /* FINAL CTA */
+  #final{align-items:center;text-align:center;padding-bottom:8vh;}
+  #final .final-eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:0.24em;color:var(--ink-faint);
+    text-transform:uppercase;margin-bottom:18px;}
+  #final .final-title{
+    font-family:var(--display);font-weight:700;font-size:clamp(38px,7vw,90px);line-height:0.98;
+  }
+  #final .final-mark{
+    font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:0.3em;color:var(--ink-dim);
+    margin-top:26px;
+  }
+  #final .hero-ctas{justify-content:center;margin-top:40px;}
+
+  footer{
+    position:relative;z-index:10;padding:40px 8vw 50px;display:flex;justify-content:space-between;
+    align-items:center;border-top:1px solid var(--line);flex-wrap:wrap;gap:16px;
+  }
+  footer .foot-logo{font-family:var(--display);font-weight:600;letter-spacing:0.2em;font-size:13px;}
+  footer .foot-meta{font-family:var(--mono);font-size:10px;color:var(--ink-faint);letter-spacing:0.08em;}
+
+  /* prototype easter egg mode */
+  body.prototype-mode #nav .logo{color:var(--ember);}
+  .egg-toast{
+    position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);z-index:120;
+    font-family:var(--mono);font-size:11px;letter-spacing:0.14em;color:var(--ember);
+    border:1px solid rgba(255,106,61,0.4);background:rgba(5,7,10,0.85);padding:12px 22px;
+    opacity:0;transition:all .5s cubic-bezier(.2,.8,.2,1);pointer-events:none;text-transform:uppercase;
+  }
+  .egg-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+  @media(max-width:800px){
+    section{padding:0 6vw;}
+    .stat-row{gap:36px;}
+    #inspect-panel{left:6vw;right:6vw;width:auto;}
+    #inspect-toggle{right:6vw;bottom:24px;}
+    .config-panel{max-width:100%;margin:0;}
+  }
+
+  @media(prefers-reduced-motion: reduce){
+    *{animation-duration:0.01ms !important;transition-duration:0.01ms !important;}
+  }
+</style>
+</head>
+<body>
+
+  <!-- LOADER -->
+  <div id="loader">
+    <div class="loader-mark">AERON</div>
+    <div class="loader-status" id="loader-status">INITIALIZING MACHINE...</div>
+    <div class="loader-bar-track"><div class="loader-bar-fill" id="loader-bar"></div></div>
+    <div class="loader-pct" id="loader-pct">00%</div>
+  </div>
+
+  <!-- 3D CANVAS -->
+  <div id="scene-root"></div>
+  <div class="vignette"></div>
+  <div class="grain"></div>
+
+  <!-- NAV -->
+  <nav id="nav">
+    <div class="logo" id="logo-mark">AERON</div>
+    <div class="links">
+      <a href="#inspect-toggle-anchor" data-nav="machine">MACHINE</a>
+      <a href="#technology" data-nav="tech">TECHNOLOGY</a>
+      <a href="#performance" data-nav="perf">PERFORMANCE</a>
+      <a href="#configurator" data-nav="config">CONFIGURE</a>
+      <a href="#machine-cta" data-nav="exp">EXPERIENCE</a>
+    </div>
+    <div class="right">
+      <button id="sound-toggle"><span id="sound-icon">♪</span><span id="sound-label">SOUND OFF</span></button>
+      <div id="nav-burger">MENU</div>
+    </div>
+  </nav>
+
+  <!-- INSPECT MACHINE TOGGLE -->
+  <button id="inspect-toggle"><span class="pulse-dot"></span> INSPECT MACHINE</button>
+  <div id="inspect-panel">
+    <div class="part-name">COMPONENT</div>
+    <div class="part-title" id="part-title">—</div>
+    <div class="part-desc" id="part-desc">Click a highlighted point on the motorcycle to inspect it.</div>
+  </div>
+
+  <div class="egg-toast" id="egg-toast">PROTOTYPE MODE UNLOCKED</div>
+
+  <!-- SCROLL CONTENT -->
+  <div id="content">
+
+    <!-- HERO -->
+    <section id="hero" data-scene="0">
+      <div class="hero-inner">
+        <div class="eyebrow">AERON X1 / ELECTRIC SUPERBIKE</div>
+        <div class="hero-title">AERON&nbsp;X1</div>
+        <div class="hero-sub">BUILT FOR THE NEXT CENTURY.</div>
+        <div class="hero-support">Electric performance. Aerodynamic intelligence. Absolute control. A motorcycle rebuilt from first principles for a world that no longer waits.</div>
+        <div class="hero-ctas">
+          <button class="btn btn-primary" data-scroll-to="technology">EXPLORE THE MACHINE</button>
+          <button class="btn btn-ghost" id="enter-experience-btn">ENTER EXPERIENCE</button>
+        </div>
+      </div>
+      <div class="scroll-cue"><div class="line"></div>SCROLL</div>
+    </section>
+
+    <!-- SCENE 01 — REVEAL -->
+    <section class="scene" data-scene="1" data-align="left">
+      <div class="eyebrow">01 — REVEAL</div>
+      <div class="scene-text">
+        <div class="scene-title">ENGINEERED<br>WITHOUT<br>COMPROMISE.</div>
+      </div>
+    </section>
+
+    <!-- SCENE 02 — DESIGN -->
+    <section class="scene" id="technology" data-scene="2" data-align="right">
+      <div class="eyebrow">02 — DESIGN</div>
+      <div class="scene-text">
+        <div class="scene-title">EVERY SURFACE<br>HAS A REASON.</div>
+        <div class="scene-body">Six systems working as one. Aero, frame, cooling, control, energy and suspension, unified into a single carbon monocoque.</div>
+      </div>
+    </section>
+    <div class="labels-layer" id="labels-layer"></div>
+
+    <!-- SCENE 03 — POWER -->
+    <section class="scene" data-scene="3" data-align="left">
+      <div class="eyebrow">03 — POWER</div>
+      <div class="scene-text">
+        <div class="scene-title">POWER, REDEFINED.</div>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-num" data-count="100" data-suffix=" KM/H">0 KM/H</div><div class="stat-label">0 → 100</div></div>
+          <div class="stat"><div class="stat-num" data-count="2.4" data-decimals="1" data-suffix=" SEC">0 SEC</div><div class="stat-label">Launch Time</div></div>
+          <div class="stat"><div class="stat-num" data-count="320" data-suffix=" KM">0 KM</div><div class="stat-label">Range</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SCENE 04 — AERODYNAMICS -->
+    <section class="scene" data-scene="4" data-align="right">
+      <div class="eyebrow">04 — AERODYNAMICS</div>
+      <div class="scene-text">
+        <div class="scene-title">AIR IS A<br>DESIGN MATERIAL.</div>
+        <div class="scene-body">Every panel was shaped inside a digital wind tunnel, millimetre by millimetre, until drag disappeared into the silhouette.</div>
+      </div>
+    </section>
+
+    <!-- SCENE 05 — INTELLIGENCE -->
+    <section class="scene" data-scene="5" data-align="left">
+      <div class="eyebrow">05 — INTELLIGENCE</div>
+      <div class="scene-text">
+        <div class="scene-title">AERON<br>INTELLIGENCE.</div>
+        <div class="scene-body">A continuous decision loop, adjusting riding mode, suspension, torque delivery, aerodynamics and battery management sixty times per second.</div>
+        <div class="data-panel">
+          <div class="data-line"><span>RIDING MODE</span><span id="dl-mode">SPORT</span></div>
+          <div class="data-line"><span>SUSPENSION</span><span id="dl-susp">ADAPTIVE</span></div>
+          <div class="data-line"><span>TORQUE DELIVERY</span><span id="dl-torque">OPTIMAL</span></div>
+          <div class="data-line"><span>AERO STATE</span><span id="dl-aero">ACTIVE</span></div>
+          <div class="data-line"><span>BATTERY MGMT</span><span id="dl-batt">98%</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PERFORMANCE -->
+    <section id="performance" data-scene="6" data-align="center">
+      <div class="eyebrow">PERFORMANCE</div>
+      <div class="scene-text" style="max-width:900px;">
+        <div class="scene-title" style="font-size:clamp(26px,4vw,42px)">RAW NUMBERS. NO EXCESS.</div>
+        <div class="stat-row" style="justify-content:center;">
+          <div class="stat"><div class="stat-num" data-count="320" data-suffix=" KM/H">0</div><div class="stat-label">Top Speed</div></div>
+          <div class="stat"><div class="stat-num" data-count="2.4" data-decimals="1" data-suffix=" SEC">0</div><div class="stat-label">0–100 KM/H</div></div>
+          <div class="stat"><div class="stat-num" data-count="450" data-suffix=" KM">0</div><div class="stat-label">Max Range</div></div>
+          <div class="stat"><div class="stat-num" data-count="180" data-suffix=" KW">0</div><div class="stat-label">Peak Power</div></div>
+          <div class="stat"><div class="stat-num" data-count="210" data-suffix=" KG">0</div><div class="stat-label">Dry Weight</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CONFIGURATOR -->
+    <section id="configurator" data-scene="7" data-align="right">
+      <div class="config-panel">
+        <div class="eyebrow" style="margin-bottom:20px;">BUILD YOUR AERON</div>
+        <div class="config-group">
+          <div class="config-group-label">Body Finish</div>
+          <div class="swatch-row" id="swatch-body"></div>
+        </div>
+        <div class="config-group">
+          <div class="config-group-label">Wheel Finish</div>
+          <div class="opt-row" id="opt-wheel"></div>
+        </div>
+        <div class="config-group">
+          <div class="config-group-label">Lighting</div>
+          <div class="opt-row" id="opt-light"></div>
+        </div>
+        <div class="config-summary">
+          <div>YOUR BUILD</div>
+          <div><b>AERON X1</b> — <span id="sum-body">Obsidian</span> / <span id="sum-wheel">Carbon</span> Wheels / <span id="sum-light">Standard</span> Lighting</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ENTER THE MACHINE CTA -->
+    <section id="machine-cta" data-scene="8">
+      <div class="eyebrow">EXPERIENCE</div>
+      <div class="scene-text">
+        <div class="scene-title">SIT INSIDE<br>THE MACHINE.</div>
+        <div class="scene-body">Step into the cockpit. Live telemetry, real-time HUD, full control.</div>
+        <div class="hero-ctas" style="justify-content:center;">
+          <button class="btn btn-primary" id="enter-machine-btn">ENTER THE MACHINE</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- FINAL CTA -->
+    <section id="final" data-scene="9">
+      <div class="final-eyebrow">06 — THE JOURNEY BEGINS</div>
+      <div class="final-title">THE ROAD HAS<br>NO LIMIT.</div>
+      <div class="final-mark">AERON X1</div>
+      <div class="hero-ctas">
+        <button class="btn btn-primary">START YOUR JOURNEY</button>
+        <button class="btn btn-ghost" data-scroll-to="performance">EXPLORE SPECIFICATIONS</button>
+      </div>
+    </section>
+
+    <footer>
+      <div class="foot-logo">AERON</div>
+      <div class="foot-meta">© 2040 AERON MOTORCYCLES — CONCEPT EXPERIENCE — BUILT WITH THREE.JS</div>
+    </footer>
+
+  </div>
+
+  <!-- COCKPIT / MACHINE MODE -->
+  <div id="cockpit">
+    <div class="hud-ring"></div>
+    <div class="hud">
+      <div class="hud-corner hud-tl">
+        <div class="hud-line">SYSTEM // AERON INTELLIGENCE</div>
+        <div class="hud-line">MODE // <span class="hud-value" id="hud-mode">SPORT</span></div>
+        <div class="hud-line">TEMP // <span class="hud-value">36°C</span></div>
+      </div>
+      <div class="hud-corner hud-tr">
+        <div class="hud-line">BATTERY</div>
+        <div class="hud-line hud-value" id="hud-batt" style="font-size:22px;">98%</div>
+      </div>
+      <div class="hud-corner hud-bl">
+        <div class="hud-line">RPM // MOTOR OUTPUT</div>
+        <div class="hud-line hud-value" id="hud-rpm">4,200</div>
+      </div>
+      <div class="hud-corner hud-br">
+        <div class="hud-line">NAVIGATION</div>
+        <div class="hud-line hud-value">COASTAL HIGHWAY 01</div>
+      </div>
+      <div class="hud-speed">
+        <div class="num" id="hud-speed">0</div>
+        <div class="lbl">KM/H</div>
+      </div>
+    </div>
+    <button id="exit-machine">EXIT MACHINE</button>
+  </div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from "three";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+/* ============================================================
+   AERON X1 — cinematic scroll-driven 3D experience
+   Bike is procedurally constructed (no external GLB dependency).
+   ============================================================ */
+
+const root = document.getElementById('scene-root');
+const isMobile = window.innerWidth < 800;
+const dpr = Math.min(window.devicePixelRatio || 1, isMobile ? 1.5 : 2);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x05070a, 0.045);
+
+const camera = new THREE.PerspectiveCamera(38, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 1.6, 7.5);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false, powerPreference:'high-performance' });
+renderer.setPixelRatio(dpr);
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.95;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+root.appendChild(renderer.domElement);
+
+/* ---------------- Lighting ---------------- */
+const keyLight = new THREE.SpotLight(0xffffff, 220, 40, Math.PI/6, 0.4, 1.4);
+keyLight.position.set(6, 9, 6);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(isMobile?512:1024, isMobile?512:1024);
+scene.add(keyLight);
+
+const rimLight = new THREE.SpotLight(0x5b8def, 160, 40, Math.PI/5, 0.5, 1.4);
+rimLight.position.set(-7, 5, -6);
+scene.add(rimLight);
+
+const fillLight = new THREE.PointLight(0x8fb0ff, 8, 20);
+fillLight.position.set(0, 2, 4);
+scene.add(fillLight);
+
+const hemi = new THREE.HemisphereLight(0x2a3d5c, 0x000000, 0.7);
+scene.add(hemi);
+
+// Studio-style environment map so glossy/metal/carbon parts pick up soft
+// reflections and gradients instead of disappearing into the black void.
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+// A soft under-lit contact glow beneath the bike so its silhouette separates
+// from the ground/void even where key/rim light doesn't reach.
+const contactLight = new THREE.PointLight(0x5b8def, 6, 6, 2);
+contactLight.position.set(0, -0.6, 0.6);
+scene.add(contactLight);
+
+/* ---------------- Ground with reflection-ish plane ---------------- */
+const groundGeo = new THREE.PlaneGeometry(200, 200);
+const groundMat = new THREE.MeshStandardMaterial({ color:0x05070a, roughness:0.15, metalness:0.6 });
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+ground.position.y = -1.02;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const gridHelper = new THREE.GridHelper(120, 60, 0x1c2740, 0x0d1420);
+gridHelper.position.y = -1.01;
+scene.add(gridHelper);
+
+/* ---------------- Particles ---------------- */
+function makeParticles(count, spread, size, color, opacity){
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    pos[i*3] = (Math.random()-0.5)*spread;
+    pos[i*3+1] = Math.random()*spread*0.5 - spread*0.1;
+    pos[i*3+2] = (Math.random()-0.5)*spread;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  const mat = new THREE.PointsMaterial({ color, size, transparent:true, opacity, depthWrite:false, blending:THREE.AdditiveBlending });
+  return new THREE.Points(geo, mat);
+}
+const particlesAmbient = makeParticles(isMobile?250:700, 40, 0.035, 0xffffff, 0.35);
+scene.add(particlesAmbient);
+const particlesEnergy = makeParticles(isMobile?150:450, 12, 0.045, 0x5b8def, 0.7);
+particlesEnergy.visible = false;
+scene.add(particlesEnergy);
+
+/* ---------------- Materials (configurable) ---------------- */
+const BODY_COLORS = {
+  Obsidian:  0x0a0c10,
+  Titanium:  0x9aa1ab,
+  Arctic:    0xe9edf2,
+  Crimson:   0x7a1420,
+  'Electric Blue': 0x1a3d8f
+};
+// NOTE: these are `let`, not `const` — the assembly-from-light effect below
+// swaps each in for a deduplicated clone so configurator edits (which mutate
+// these exact variables) keep hitting whatever material the meshes actually render with.
+let bodyMaterial = new THREE.MeshPhysicalMaterial({
+  color: BODY_COLORS.Obsidian, metalness:0.7, roughness:0.32, clearcoat:0.8, clearcoatRoughness:0.2,
+  envMapIntensity:1.4
+});
+let carbonMaterial = new THREE.MeshStandardMaterial({ color:0x272e3a, metalness:0.55, roughness:0.42, envMapIntensity:1.2 });
+let chromeMaterial = new THREE.MeshStandardMaterial({ color:0xd7dee6, metalness:1, roughness:0.1, envMapIntensity:1.6 });
+let wheelMaterial = new THREE.MeshStandardMaterial({ color:0x2b2f38, metalness:0.85, roughness:0.28, envMapIntensity:1.3 });
+let tireMaterial = new THREE.MeshStandardMaterial({ color:0x15161a, roughness:0.8, envMapIntensity:0.4 });
+let glowMaterial = new THREE.MeshBasicMaterial({ color:0x5b8def });
+let headlightMaterial = new THREE.MeshBasicMaterial({ color:0xdfe9ff });
+let emberGlow = new THREE.MeshBasicMaterial({ color:0xff6a3d });
+
+const WHEEL_COLORS = { Carbon:0x1a1c22, Titanium:0x8c94a0, Black:0x0a0a0c };
+const LIGHT_MODES = { Standard:0xdfe9ff, Pulse:0x5b8def, Performance:0xff6a3d };
+
+/* ---------------- Procedural AERON X1 bike ---------------- */
+const bike = new THREE.Group();
+scene.add(bike);
+
+const partMeshes = {}; // for inspect-mode raycasting -> keyed by part id
+
+function addPart(id, mesh, castShadow=true){
+  mesh.castShadow = castShadow;
+  mesh.receiveShadow = true;
+  mesh.userData.partId = id;
+  partMeshes[id] = partMeshes[id] || [];
+  partMeshes[id].push(mesh);
+  bike.add(mesh);
+  return mesh;
+}
+
+// Wheels (torus + hub + spokes)
+function buildWheel(x, id, side){
+  const g = new THREE.Group();
+  // TorusGeometry already lies flat in the XY plane by default (its hole
+  // axis is Z) — that's exactly a wheel's correct orientation (axle = Z,
+  // width axis). No extra rotation is needed; adding rotation.y here was
+  // the bug that turned the wheel 90° onto its edge, so it rendered as a
+  // thin blade instead of a circle.
+  const tire = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.155, 18, 40), tireMaterial);
+  g.add(tire);
+  const rim = new THREE.Mesh(new THREE.TorusGeometry(0.46, 0.045, 12, 32), wheelMaterial);
+  g.add(rim);
+  // CylinderGeometry's default axis is Y — rotating on X (not Z) is what
+  // actually swings that axis onto Z to match the wheel's axle direction.
+  const hub = new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,0.24,20), chromeMaterial);
+  hub.rotation.x = Math.PI/2;
+  g.add(hub);
+  // brake disc — reads instantly as "real motorcycle wheel" detail
+  const disc = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.018, 8, 28), chromeMaterial);
+  disc.position.z = side==='front' ? 0.14 : -0.14;
+  g.add(disc);
+  const caliper = new THREE.Mesh(new THREE.BoxGeometry(0.05,0.11,0.14), new THREE.MeshStandardMaterial({color:0xff6a3d, metalness:0.3, roughness:0.4}));
+  caliper.position.set(0, 0.26, side==='front'?0.14:-0.14);
+  g.add(caliper);
+  for(let i=0;i<5;i++){
+    const sg = new THREE.Group();
+    const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.4, 0.055), wheelMaterial);
+    sg.add(spoke);
+    sg.rotation.z = (i/5)*Math.PI*2; // fan spokes around the axle (Z), not off-plane
+    g.add(sg);
+  }
+  g.position.set(x, -0.4, 0);
+  addPart(id, tire); addPart(id, rim); addPart(id, hub); addPart(id, disc); addPart(id, caliper);
+  g.traverse(o=>{ if(o.isMesh){o.userData.partId=id; o.castShadow=true; o.receiveShadow=true;} });
+  bike.add(g);
+  return g;
+}
+const frontWheel = buildWheel(1.55, 'wheels', 'front');
+const rearWheel = buildWheel(-1.5, 'wheels', 'rear');
+
+// ---- Main body: a single extruded side-profile (nose → tank → seat → tail) ----
+// This is what actually reads as "a motorcycle" from any angle, rather than
+// separate primitives that don't connect. Coordinates trace the bike's real
+// silhouette: front wheel is at x=1.55, rear wheel at x=-1.5, ground at y=-1.02.
+const bodyShape = new THREE.Shape();
+bodyShape.moveTo(1.78, 0.40);   // nose tip
+bodyShape.lineTo(1.52, 0.60);   // nose rising to screen
+bodyShape.lineTo(1.24, 0.70);   // windscreen base
+bodyShape.lineTo(0.55, 0.82);   // tank peak
+bodyShape.lineTo(0.05, 0.70);   // tank → seat junction
+bodyShape.lineTo(-0.40, 0.66);  // seat
+bodyShape.lineTo(-0.90, 0.60);  // seat → tail junction
+bodyShape.lineTo(-1.32, 0.52);  // tail cowl
+bodyShape.lineTo(-1.76, 0.36);  // tail tip
+bodyShape.lineTo(-1.58, 0.14);  // tail underside
+bodyShape.lineTo(-0.62, 0.04);  // belly under seat
+bodyShape.lineTo(0.18, 0.00);   // belly under tank (lowest point)
+bodyShape.lineTo(1.05, 0.04);   // lower fairing
+bodyShape.lineTo(1.58, 0.16);   // nose underside
+bodyShape.closePath();
+const bodyGeo = new THREE.ExtrudeGeometry(bodyShape, { depth:0.46, bevelEnabled:true, bevelThickness:0.03, bevelSize:0.03, bevelSegments:3, steps:1 });
+bodyGeo.translate(0, 0, -0.23);
+const bodyMesh = new THREE.Mesh(bodyGeo, bodyMaterial);
+addPart('battery', bodyMesh);
+
+// Central spine tube, hinted at the tail and headstock only (mostly hidden by the body shell)
+const framePts = [
+  new THREE.Vector3(-1.55, 0.02, 0),
+  new THREE.Vector3(-0.7, 0.2, 0),
+  new THREE.Vector3(0.3, 0.28, 0),
+  new THREE.Vector3(1.1, 0.35, 0),
+  new THREE.Vector3(1.5, 0.55, 0)
+];
+const frameCurve = new THREE.CatmullRomCurve3(framePts);
+const frameGeo = new THREE.TubeGeometry(frameCurve, 40, 0.055, 10, false);
+addPart('frame', new THREE.Mesh(frameGeo, carbonMaterial));
+
+// Motor block sits low between the wheels, partly visible beneath the belly pan
+const motorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.38, 0.46), new THREE.MeshStandardMaterial({color:0x2a2f3a, metalness:0.7, roughness:0.35, envMapIntensity:1.2}));
+motorMesh.position.set(-0.15, -0.28, 0);
+addPart('motor', motorMesh);
+for(let i=0;i<5;i++){
+  const fin = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.018, 0.5), chromeMaterial);
+  fin.position.set(-0.15, -0.44 + i*0.045, 0);
+  addPart('motor', fin);
+}
+// Exhaust — curves out from the motor, under the tail, a real physical connection
+const exhaustPts = [
+  new THREE.Vector3(-0.4, -0.42, 0.2),
+  new THREE.Vector3(-0.9, -0.5, 0.3),
+  new THREE.Vector3(-1.4, -0.32, 0.32),
+  new THREE.Vector3(-1.68, -0.05, 0.28)
+];
+const exhaustCurve = new THREE.CatmullRomCurve3(exhaustPts);
+const exhaustGeo = new THREE.TubeGeometry(exhaustCurve, 24, 0.075, 12, false);
+addPart('motor', new THREE.Mesh(exhaustGeo, chromeMaterial));
+const exhaustTip = new THREE.Mesh(new THREE.CylinderGeometry(0.09,0.09,0.05,16), new THREE.MeshStandardMaterial({color:0x111214, metalness:0.6, roughness:0.5}));
+exhaustTip.rotation.x = Math.PI/2;
+exhaustTip.position.set(-1.7, -0.03, 0.28);
+addPart('motor', exhaustTip);
+
+// Front fork — attaches steering head (top of nose) to the front wheel axle
+const forkTop = new THREE.Vector3(1.48, 0.66, 0);
+const forkBottom = new THREE.Vector3(1.55, -0.4, 0);
+const forkLen = forkTop.distanceTo(forkBottom);
+const forkAngle = Math.atan2(forkTop.x - forkBottom.x, forkTop.y - forkBottom.y);
+function buildFork(zOff){
+  const fork = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,forkLen,10), chromeMaterial);
+  fork.position.set((forkTop.x+forkBottom.x)/2, (forkTop.y+forkBottom.y)/2, zOff);
+  fork.rotation.z = -forkAngle;
+  addPart('suspension', fork);
+}
+buildFork(0.16); buildFork(-0.16);
+
+// Handlebar — mounted at the steering head, just ahead of the tank peak
+const handlebar = new THREE.Mesh(new THREE.TorusGeometry(0.24, 0.02, 8, 20, Math.PI*1.3), carbonMaterial);
+handlebar.position.set(1.18, 0.78, 0);
+handlebar.rotation.set(Math.PI/2, 0, Math.PI*0.35);
+addPart('frame', handlebar);
+// Mirrors on thin stalks
+function buildMirror(z){
+  const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.16,6), carbonMaterial);
+  stalk.position.set(1.28, 0.9, z);
+  stalk.rotation.z = 0.5;
+  addPart('frame', stalk);
+  const glass = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.05,0.03), chromeMaterial);
+  glass.position.set(1.36, 0.97, z*1.15);
+  addPart('frame', glass);
+}
+buildMirror(0.26); buildMirror(-0.26);
+
+// Windscreen — small angled glass ahead of the tank peak
+const windscreenMat = new THREE.MeshPhysicalMaterial({ color:0x9fd0ff, transmission:0.85, roughness:0.1, thickness:0.05, transparent:true, opacity:0.55, envMapIntensity:1.2 });
+const windscreen = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 0.4, 16, 1, true, -0.5, 1.0), windscreenMat);
+windscreen.rotation.z = Math.PI/2;
+windscreen.rotation.y = 0.15;
+windscreen.scale.set(0.42, 0.6, 1);
+windscreen.position.set(1.35, 0.78, 0);
+addPart('frame', windscreen, false);
+
+// Rear shock — links the underside of the seat to the swingarm pivot
+const shock = new THREE.Mesh(new THREE.CylinderGeometry(0.035,0.035,0.5,10), chromeMaterial);
+shock.position.set(-0.55, -0.1, 0);
+shock.rotation.z = 0.75;
+addPart('suspension', shock);
+
+// Swingarm — connects the motor/pivot area back to the rear axle
+function buildSwingarm(zOff){
+  const swing = new THREE.Mesh(new THREE.BoxGeometry(1.05, 0.075, 0.09), carbonMaterial);
+  swing.position.set(-1.0, -0.36, zOff);
+  swing.rotation.z = -0.03;
+  addPart('frame', swing);
+}
+buildSwingarm(0.14); buildSwingarm(-0.14);
+
+// Headlight — set into the nose tip
+const headlightMesh = new THREE.Mesh(new THREE.SphereGeometry(0.14, 16, 16, 0, Math.PI), headlightMaterial);
+headlightMesh.position.set(1.74, 0.42, 0);
+headlightMesh.rotation.y = Math.PI/2;
+addPart('frame', headlightMesh);
+const headlightGlow = new THREE.PointLight(0xdfe9ff, 4, 5);
+headlightGlow.position.copy(headlightMesh.position);
+bike.add(headlightGlow);
+
+// Tail light — set into the tail tip
+const tailLightMesh = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.07, 0.3), emberGlow);
+tailLightMesh.position.set(-1.72, 0.4, 0);
+addPart('frame', tailLightMesh);
+
+// Aero winglets — flush against the nose fairing, not floating off to the side
+function buildWinglet(zOff){
+  const wing = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.018, 0.16), carbonMaterial);
+  wing.position.set(1.15, 0.44, zOff);
+  wing.rotation.z = 0.12;
+  wing.rotation.y = zOff > 0 ? -0.2 : 0.2;
+  addPart('frame', wing);
+}
+buildWinglet(0.28); buildWinglet(-0.28);
+
+// Footpegs
+function buildFootpeg(zOff){
+  const peg = new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.16,8), chromeMaterial);
+  peg.rotation.x = Math.PI/2;
+  peg.position.set(-0.35, -0.1, zOff);
+  addPart('frame', peg);
+}
+buildFootpeg(0.24); buildFootpeg(-0.24);
+
+// Underglow line (photon accent, signature detail) — runs along the belly pan
+function buildGlowStrip(zOff){
+  const strip = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.012, 0.015), glowMaterial);
+  strip.position.set(-0.15, 0.01, zOff);
+  addPart('frame', strip, false);
+}
+buildGlowStrip(0.22); buildGlowStrip(-0.22);
+
+bike.position.y = 0.05;
+bike.rotation.y = 0.5;
+
+/* ---- Assembly-from-light signature: wireframe -> solid on first scroll ---- */
+const allBikeMeshes = [];
+bike.traverse(o=>{ if(o.isMesh){ allBikeMeshes.push(o); } });
+
+// Build the wireframe overlay first, from each mesh's *original* geometry —
+// this pass must not touch materials.
+const wireframeOverlay = new THREE.Group();
+allBikeMeshes.forEach(m=>{
+  const wf = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({color:0x5b8def, transparent:true, opacity:0.9}));
+  wf.matrixAutoUpdate = false;
+  m.updateMatrixWorld();
+  wf.matrix.copy(m.matrixWorld);
+  wireframeOverlay.add(wf);
+});
+scene.add(wireframeOverlay);
+
+// Now make each mesh's material fade-in-able. Materials are DEDUPLICATED —
+// several meshes share e.g. `chromeMaterial` or `bodyMaterial` by reference —
+// so we clone each unique material exactly once and repoint every mesh (and
+// every outer variable the configurator mutates) at that same clone. Cloning
+// per-mesh instead would silently orphan the configurator's material refs.
+const materialCloneMap = new Map();
+allBikeMeshes.forEach(m=>{
+  if(!materialCloneMap.has(m.material)){
+    const clone = m.material.clone();
+    clone.transparent = true;
+    clone.opacity = 0;
+    materialCloneMap.set(m.material, clone);
+  }
+  m.material = materialCloneMap.get(m.material);
+});
+bodyMaterial = materialCloneMap.get(bodyMaterial) || bodyMaterial;
+carbonMaterial = materialCloneMap.get(carbonMaterial) || carbonMaterial;
+chromeMaterial = materialCloneMap.get(chromeMaterial) || chromeMaterial;
+wheelMaterial = materialCloneMap.get(wheelMaterial) || wheelMaterial;
+tireMaterial = materialCloneMap.get(tireMaterial) || tireMaterial;
+headlightMaterial = materialCloneMap.get(headlightMaterial) || headlightMaterial;
+glowMaterial = materialCloneMap.get(glowMaterial) || glowMaterial;
+emberGlow = materialCloneMap.get(emberGlow) || emberGlow;
+
+/* ---------------- Post-processing (bloom) ---------------- */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), isMobile?0.35:0.5, 0.4, 0.7);
+composer.addPass(bloomPass);
+
+/* ---------------- Scroll-driven camera choreography ---------------- */
+const scenes = document.querySelectorAll('[data-scene]');
+const totalScenes = scenes.length;
+
+// camera keyframes: [x,y,z] position + [x,y,z] lookAt, per scene index
+const camKeys = [
+  { pos:[0.4, 1.1, 6.2],  look:[0, 0.2, 0] },   // 0 hero
+  { pos:[3.2, 0.7, 2.4],  look:[0, 0.1, 0] },   // 1 reveal
+  { pos:[-2.6, 1.6, 3.6], look:[0.1, 0.2, 0] }, // 2 design
+  { pos:[0.2, 0.6, 4.6],  look:[0, 0.15, 0] },  // 3 power (fast/close)
+  { pos:[4.5, 0.4, -0.4], look:[0, 0, 0] },     // 4 aero (side)
+  { pos:[-0.2, 1.8, 2.4], look:[0, 0.4, 0] },   // 5 intelligence
+  { pos:[0.2, 1.0, 5.6],  look:[0, 0.1, 0] },   // 6 performance
+  { pos:[-3.6, 1.1, 3.4], look:[-0.4, 0.25, 0] },// 7 configurator — pulled back, full bike in frame
+  { pos:[1.9, 0.9, 3.6],  look:[0.9, 0.5, 0] },  // 8 enter machine — close on the cockpit, but outside the body
+  { pos:[3.3, 1.15, 6.6],  look:[-0.2, -0.05, 0] },  // 9 final — full bike, wheels included, wide enough not to clip
+];
+
+let scrollProgress = 0; // 0..1 across whole page
+let smoothProgress = 0;
+
+function getScrollProgress(){
+  const doc = document.documentElement;
+  const max = doc.scrollHeight - window.innerHeight;
+  return max>0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
+}
+
+function currentSceneFloat(){
+  return scrollProgress * (totalScenes - 1);
+}
+
+const tmpV = new THREE.Vector3();
+const tmpL = new THREE.Vector3();
+function updateCamera(){
+  const f = smoothProgress * (totalScenes - 1);
+  const i = Math.min(totalScenes-2, Math.floor(f));
+  const t = f - i;
+  const a = camKeys[i], b = camKeys[i+1];
+  const ease = t*t*(3-2*t); // smoothstep
+  tmpV.set(
+    a.pos[0] + (b.pos[0]-a.pos[0])*ease,
+    a.pos[1] + (b.pos[1]-a.pos[1])*ease,
+    a.pos[2] + (b.pos[2]-a.pos[2])*ease
+  );
+  tmpL.set(
+    a.look[0] + (b.look[0]-a.look[0])*ease,
+    a.look[1] + (b.look[1]-a.look[1])*ease,
+    a.look[2] + (b.look[2]-a.look[2])*ease
+  );
+  camera.position.lerp(tmpV, 0.14);
+  const currentLook = camera.userData.look || tmpL.clone();
+  currentLook.lerp(tmpL, 0.14);
+  camera.userData.look = currentLook;
+  camera.lookAt(currentLook);
+}
+
+/* wireframe -> solid transition across scene 0->1 */
+function updateAssembly(){
+  const f = currentSceneFloat();
+  const assembleT = Math.min(1, Math.max(0, f / 1.2)); // fully solid by scene ~1.2
+  allBikeMeshes.forEach(m=>{ m.material.opacity = assembleT; });
+  wireframeOverlay.visible = assembleT < 0.98;
+  wireframeOverlay.children.forEach(wf=>{ wf.material.opacity = 0.9 * (1-assembleT); });
+  wireframeOverlay.traverse(o=>{});
+}
+
+/* scene 2 component labels */
+const componentDefs = [
+  { id:'aero', name:'Adaptive Aero', anchor: new THREE.Vector3(1.15,0.44,0.28) },
+  { id:'frame', name:'Carbon Frame', anchor: new THREE.Vector3(-0.7,0.2,0) },
+  { id:'motor', name:'Liquid Cooling', anchor: new THREE.Vector3(-0.15,-0.28,0) },
+  { id:'battery', name:'Neural Control Unit', anchor: new THREE.Vector3(0.3,0.7,0) },
+  { id:'battery2', name:'Solid-State Battery', anchor: new THREE.Vector3(-0.5,0.62,0) },
+  { id:'suspension', name:'Performance Suspension', anchor: new THREE.Vector3(1.5,0.15,0.16) },
+];
+const labelsLayer = document.getElementById('labels-layer');
+const labelEls = componentDefs.map(def=>{
+  const el = document.createElement('div');
+  el.className = 'comp-label';
+  el.innerHTML = `<span class="dot"></span>${def.name}`;
+  labelsLayer.appendChild(el);
+  return el;
+});
+function updateLabels(){
+  const f = currentSceneFloat();
+  const inDesignScene = f > 1.55 && f < 2.75;
+  const proj = new THREE.Vector3();
+  componentDefs.forEach((def,i)=>{
+    const el = labelEls[i];
+    if(!inDesignScene){ el.classList.remove('visible'); return; }
+    proj.copy(def.anchor);
+    bike.localToWorld(proj);
+    proj.project(camera);
+    const x = (proj.x*0.5+0.5)*window.innerWidth;
+    const y = (-proj.y*0.5+0.5)*window.innerHeight;
+    if(proj.z > 1 || x<0 || x>window.innerWidth){ el.classList.remove('visible'); return; }
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    const localT = (f-1.55)/1.2;
+    if(localT > i/componentDefs.length){ el.classList.add('visible'); } else { el.classList.remove('visible'); }
+  });
+}
+
+/* scene 3 power — energetic particles + faster spin */
+function updatePowerScene(){
+  const f = currentSceneFloat();
+  const active = f > 2.6 && f < 3.9;
+  particlesEnergy.visible = active;
+  if(active) particlesEnergy.rotation.y += 0.01;
+}
+
+/* ---------------- animate loop ---------------- */
+const clock = new THREE.Clock();
+let idleTime = 0;
+let lastScrollTime = performance.now();
+
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = clock.getDelta();
+
+  scrollProgress = getScrollProgress();
+  smoothProgress += (scrollProgress - smoothProgress) * 0.08;
+
+  const sinceScroll = performance.now() - lastScrollTime;
+  if(sinceScroll > 1400 && smoothProgress < 0.02){
+    idleTime += dt;
+    bike.rotation.y += dt * 0.18;
+  }
+
+  particlesAmbient.rotation.y += dt*0.008;
+  updatePowerScene();
+  updateAssembly();
+  updateCamera();
+  updateLabels();
+
+  keyLight.position.x = 6 * Math.cos(clock.elapsedTime*0.05);
+  headlightGlow.intensity = 3.5 + Math.sin(clock.elapsedTime*3)*0.4;
+
+  composer.render();
+}
+animate();
+
+window.addEventListener('scroll', ()=>{ lastScrollTime = performance.now(); }, { passive:true });
+
+window.addEventListener('resize', ()=>{
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  composer.setSize(window.innerWidth, window.innerHeight);
+});
+
+/* pointer parallax on hero */
+let pointerX=0, pointerY=0;
+window.addEventListener('pointermove', (e)=>{
+  pointerX = (e.clientX/window.innerWidth - 0.5);
+  pointerY = (e.clientY/window.innerHeight - 0.5);
+  if(scrollProgress < 0.03){
+    bike.rotation.y = 0.5 + pointerX*0.25;
+    bike.rotation.x = pointerY*0.06;
+    camera.userData.parallax = true;
+  }
+});
+
+/* ================= UI WIRING ================= */
+
+// Loader
+const loader = document.getElementById('loader');
+const loaderBar = document.getElementById('loader-bar');
+const loaderPct = document.getElementById('loader-pct');
+const loaderStatus = document.getElementById('loader-status');
+let loadPct = 0;
+const loadInterval = setInterval(()=>{
+  loadPct += Math.random()*18;
+  if(loadPct >= 100){
+    loadPct = 100;
+    clearInterval(loadInterval);
+    loaderStatus.textContent = 'SYSTEM READY';
+    setTimeout(()=> loader.classList.add('hidden'), 550);
+  }
+  loaderBar.style.width = loadPct+'%';
+  loaderPct.textContent = Math.floor(loadPct).toString().padStart(2,'0')+'%';
+}, 220);
+
+// nav smooth scroll
+document.querySelectorAll('[data-scroll-to]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.scrollTo);
+    if(target) target.scrollIntoView({ behavior:'smooth' });
+  });
+});
+document.getElementById('enter-experience-btn').addEventListener('click', ()=>{
+  window.scrollTo({ top: document.body.scrollHeight*0.15, behavior:'smooth' });
+});
+
+// animated counters
+const counters = document.querySelectorAll('[data-count]');
+const counterObserver = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const el = entry.target;
+      const target = parseFloat(el.dataset.count);
+      const decimals = parseInt(el.dataset.decimals||'0');
+      const suffix = el.dataset.suffix||'';
+      let start = null;
+      const dur = 1400;
+      function step(ts){
+        if(!start) start = ts;
+        const p = Math.min(1, (ts-start)/dur);
+        const eased = 1 - Math.pow(1-p, 3);
+        const val = (target*eased).toFixed(decimals);
+        el.textContent = val + suffix;
+        if(p<1) requestAnimationFrame(step);
+      }
+      requestAnimationFrame(step);
+      counterObserver.unobserve(el);
+    }
+  });
+}, { threshold:0.5 });
+counters.forEach(c=>counterObserver.observe(c));
+
+// intelligence data panel subtle flicker
+const dataVals = ['dl-mode','dl-susp','dl-torque','dl-aero','dl-batt'];
+setInterval(()=>{
+  const battEl = document.getElementById('dl-batt');
+  if(battEl){
+    const v = 92 + Math.floor(Math.random()*7);
+    battEl.textContent = v+'%';
+  }
+}, 1800);
+
+/* ---------------- Configurator ---------------- */
+const swatchBody = document.getElementById('swatch-body');
+Object.entries(BODY_COLORS).forEach(([name,hex],i)=>{
+  const s = document.createElement('div');
+  s.className = 'swatch' + (i===0?' active':'');
+  s.style.background = '#'+hex.toString(16).padStart(6,'0');
+  s.title = name;
+  s.addEventListener('click', ()=>{
+    document.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active'));
+    s.classList.add('active');
+    bodyMaterial.color.setHex(hex);
+    document.getElementById('sum-body').textContent = name;
+  });
+  swatchBody.appendChild(s);
+});
+
+const optWheel = document.getElementById('opt-wheel');
+Object.entries(WHEEL_COLORS).forEach(([name,hex],i)=>{
+  const b = document.createElement('button');
+  b.className = 'opt-btn' + (i===0?' active':'');
+  b.textContent = name;
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#opt-wheel .opt-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    wheelMaterial.color.setHex(hex);
+    document.getElementById('sum-wheel').textContent = name;
+  });
+  optWheel.appendChild(b);
+});
+
+const optLight = document.getElementById('opt-light');
+Object.entries(LIGHT_MODES).forEach(([name,hex],i)=>{
+  const b = document.createElement('button');
+  b.className = 'opt-btn' + (i===0?' active':'');
+  b.textContent = name;
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('#opt-light .opt-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    headlightMaterial.color.setHex(hex);
+    headlightGlow.color.setHex(hex);
+    document.getElementById('sum-light').textContent = name;
+  });
+  optLight.appendChild(b);
+});
+
+/* ---------------- Inspect Machine mode ---------------- */
+const PART_INFO = {
+  battery: { title:'SOLID-STATE ENERGY CORE', desc:'A structural battery pack integrated into the monocoque, delivering 450km of range with zero thermal compromise.' },
+  motor: { title:'DUAL PERFORMANCE MOTOR', desc:'Twin axial-flux motors deliver 180kW combined output with instant, silent torque.' },
+  frame: { title:'CARBON MONOCOQUE', desc:'A single-piece carbon structure replacing over 40 traditional components, cutting mass by 30%.' },
+  suspension: { title:'ADAPTIVE DYNAMIC SUSPENSION', desc:'Electronically-controlled damping recalculates 500 times per second for terrain and riding mode.' },
+  wheels: { title:'AERODYNAMIC FORGED ALLOY', desc:'Forged alloy wheels shaped to reduce turbulent drag at speed, saving 1.2kg per wheel versus cast alternatives.' },
+};
+let inspectMode = false;
+const inspectToggle = document.getElementById('inspect-toggle');
+const inspectPanel = document.getElementById('inspect-panel');
+const raycaster = new THREE.Raycaster();
+const pointerNDC = new THREE.Vector2();
+
+inspectToggle.addEventListener('click', ()=>{
+  inspectMode = !inspectMode;
+  inspectToggle.classList.toggle('active', inspectMode);
+  if(!inspectMode) inspectPanel.classList.remove('visible');
+});
+
+renderer.domElement.addEventListener('click', (e)=>{
+  if(!inspectMode) return;
+  pointerNDC.x = (e.clientX/window.innerWidth)*2-1;
+  pointerNDC.y = -(e.clientY/window.innerHeight)*2+1;
+  raycaster.setFromCamera(pointerNDC, camera);
+  const hits = raycaster.intersectObjects(bike.children, true);
+  if(hits.length){
+    const partId = hits[0].object.userData.partId;
+    const info = PART_INFO[partId];
+    if(info){
+      document.getElementById('part-title').textContent = info.title;
+      document.getElementById('part-desc').textContent = info.desc;
+      inspectPanel.classList.add('visible');
+    }
+  }
+});
+
+/* ---------------- Enter the Machine (cockpit mode) ---------------- */
+const cockpit = document.getElementById('cockpit');
+const enterMachineBtn = document.getElementById('enter-machine-btn');
+const exitMachineBtn = document.getElementById('exit-machine');
+let cockpitActive = false;
+let cockpitRAF;
+
+function cockpitLoop(){
+  if(!cockpitActive) return;
+  const t = performance.now()/1000;
+  const speed = Math.max(0, 210 + Math.sin(t*0.4)*90 + Math.sin(t*2.3)*6);
+  document.getElementById('hud-speed').textContent = Math.round(speed);
+  document.getElementById('hud-rpm').textContent = Math.round(3800 + Math.sin(t*1.7)*900).toLocaleString();
+  document.getElementById('hud-batt').textContent = Math.max(60, Math.round(98 - t*0.15)) + '%';
+  cockpitRAF = requestAnimationFrame(cockpitLoop);
+}
+
+enterMachineBtn.addEventListener('click', ()=>{
+  cockpitActive = true;
+  cockpit.classList.add('active');
+  document.body.style.overflow = 'hidden';
+  cockpitLoop();
+});
+exitMachineBtn.addEventListener('click', ()=>{
+  cockpitActive = false;
+  cockpit.classList.remove('active');
+  document.body.style.overflow = '';
+  cancelAnimationFrame(cockpitRAF);
+});
+
+/* ---------------- Sound (ambient hum via WebAudio, no external files) ---------------- */
+let audioCtx, humOsc, humGain, soundOn = false;
+function ensureAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  humOsc = audioCtx.createOscillator();
+  humOsc.type = 'sine';
+  humOsc.frequency.value = 52;
+  humGain = audioCtx.createGain();
+  humGain.gain.value = 0;
+  humOsc.connect(humGain).connect(audioCtx.destination);
+  humOsc.start();
+}
+document.getElementById('sound-toggle').addEventListener('click', ()=>{
+  ensureAudio();
+  soundOn = !soundOn;
+  if(audioCtx.state === 'suspended') audioCtx.resume();
+  humGain.gain.linearRampToValueAtTime(soundOn?0.02:0, audioCtx.currentTime+0.6);
+  document.getElementById('sound-label').textContent = soundOn ? 'SOUND ON' : 'SOUND OFF';
+});
+
+/* ---------------- Easter eggs ---------------- */
+let logoClicks = 0;
+const egg = document.getElementById('egg-toast');
+document.getElementById('logo-mark').addEventListener('click', ()=>{
+  logoClicks++;
+  if(logoClicks === 5){
+    document.body.classList.toggle('prototype-mode');
+    egg.classList.add('show');
+    setTimeout(()=>egg.classList.remove('show'), 2600);
+    logoClicks = 0;
+  }
+});
+
+// Konami code -> secret camera angle
+const konami = ['ArrowUp','ArrowUp','ArrowDown','ArrowDown','ArrowLeft','ArrowRight','ArrowLeft','ArrowRight','b','a'];
+let konamiIdx = 0;
+window.addEventListener('keydown', (e)=>{
+  if(e.key === konami[konamiIdx]){
+    konamiIdx++;
+    if(konamiIdx === konami.length){
+      konamiIdx = 0;
+      camKeys[0] = { pos:[0,3.2,0.2], look:[0,0,0] }; // secret top-down hero angle
+      egg.textContent = 'SECRET CAMERA UNLOCKED';
+      egg.classList.add('show');
+      setTimeout(()=>egg.classList.remove('show'), 2600);
+    }
+  } else {
+    konamiIdx = (e.key === konami[0]) ? 1 : 0;
+  }
+});
+
+// click headlight -> cycle lighting system
+headlightGlow.userData = { clickable:true };
+window.addEventListener('dblclick', (e)=>{
+  pointerNDC.x = (e.clientX/window.innerWidth)*2-1;
+  pointerNDC.y = -(e.clientY/window.innerHeight)*2+1;
+  raycaster.setFromCamera(pointerNDC, camera);
+  const hit = raycaster.intersectObject(headlightMesh)[0];
+  if(hit){
+    const modes = Object.values(LIGHT_MODES);
+    const idx = (modes.indexOf(headlightMaterial.color.getHex())+1) % modes.length;
+    headlightMaterial.color.setHex(modes[idx]);
+    headlightGlow.color.setHex(modes[idx]);
+  }
+});
+
+</script>
+</body>
+</html>
