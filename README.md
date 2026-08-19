@@ -78,5 +78,5 @@ aeron-x1/
 This is a concept/demo project built for a hackathon-style showcase. The motorcycle is fictional, and the "specs" shown (top speed, range, etc.) are illustrative, not real-world figures.
 
 ## 📄 License
-
+- Shivam Kumar(BTech CSE Student)
 MIT — feel free to fork, remix, and build on it.
