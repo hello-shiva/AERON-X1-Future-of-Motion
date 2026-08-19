@@ -1,27 +1,82 @@
-# AERON X1 — Additional Info for Judges
+# AERON X1 — Future of Motion
 
-## How to run the project
-This is a single self-contained HTML file — no build step, no install, no server required.
+An immersive, scroll-driven 3D website for a fictional electric superbike, built entirely with **Three.js**. No build step, no external 3D assets, no frameworks — the motorcycle, its materials, lighting, and camera choreography are all generated in a single HTML file.
 
-1. Open `source/index.html` in a modern desktop browser (Chrome, Edge, or Firefox recommended — WebGL2 required).
-2. Scroll to move through the cinematic experience.
-3. Try the interactive features:
-   - **Inspect Machine** (bottom-right button) — click parts of the bike for specs
-   - **Build Your Aeron** (Configure section) — change body finish, wheel finish, and lighting live
-   - **Enter the Machine** — full-screen cockpit HUD mode
-   - Sound toggle (top-right) for ambient audio
-   - Easter eggs: click the "AERON" logo 5 times, or try the Konami code (↑↑↓↓←→←→ B A)
+![AERON X1 thumbnail](media/aeron-thumbnail.png)
 
-No external assets are loaded except the Three.js library and Google Fonts, both from public CDNs — everything else (the motorcycle geometry, materials, lighting, camera choreography) is generated in-browser by the code in this one file.
+## ✨ Features
 
-## What's in this zip
-- `source/index.html` — the full project source (Three.js scene, UI, and logic in one file)
-- `media/aeron-thumbnail.png` — project thumbnail (3:2)
-- `media/aeron-gallery-*.png` — gallery images used on the project page, one per major section (Hero, Design, Performance, Configure, Cockpit)
-- `media/aeron-x1-teaser.mp4` — a short motion-graphics teaser assembled from the gallery frames (uploaded separately to YouTube for the video demo link)
+- **Cinematic scroll-driven camera** — scrolling moves the camera through a sequence of directed shots (Reveal → Design → Power → Aerodynamics → Intelligence → Performance), not just a spinning model
+- **Procedurally built motorcycle** — the entire bike (frame, fairing, wheels, suspension, motor, exhaust) is generated from code, no imported 3D model
+- **Assembly-from-light intro** — the bike fades in from a glowing wireframe blueprint into a fully solid model on first scroll
+- **Inspect Machine mode** — click any part of the bike to pull up specs on the battery, motor, frame, suspension, and wheels
+- **Live configurator** — change body finish, wheel finish, and lighting mode and watch the actual 3D materials update in real time
+- **Enter the Machine** — a full-screen cockpit mode with an animated HUD (speed, RPM, battery, riding mode)
+- **Realistic lighting** — PMREM-generated environment map + bloom post-processing so metal and carbon surfaces pick up real reflections
+- **Ambient audio** — a low engine-like hum generated with the Web Audio API (no external sound files)
+- **Easter eggs** — click the logo 5 times, try the Konami code, or double-click the headlight
 
-## Tech stack
-Three.js, vanilla JavaScript (ES modules), HTML5, CSS3, WebGL, GLSL (post-processing), Web Audio API. No build tooling, no framework, no external 3D asset files — the motorcycle is generated procedurally at runtime.
+## 🖼️ Preview
 
-## Notes on the build process
-The 3D motorcycle is built entirely from primitive and extruded geometry rather than an imported model, so every surface, wheel, and light is composed and lit in code. A PMREM-generated environment map gives the metal/carbon materials realistic reflections, and an UnrealBloomPass post-processing pass handles the glow on lights and accent lines. Camera movement through the scroll-driven scenes is hand-interpolated between keyframes rather than using a scroll-animation library, keeping the whole thing dependency-light.
+| Design | Performance |
+|---|---|
+| ![Design](media/aeron-gallery-02-design.png) | ![Performance](media/aeron-gallery-03-performance.png) |
+
+| Configurator | Cockpit |
+|---|---|
+| ![Configurator](media/aeron-gallery-04-configurator.png) | ![Cockpit](media/aeron-gallery-05-cockpit.png) |
+
+## 🚀 Getting started
+
+No installation or build step required.
+
+```bash
+git clone https://github.com/your-username/aeron-x1.git
+cd aeron-x1
+```
+
+Then just open `source/index.html` in a modern desktop browser (Chrome, Edge, or Firefox — WebGL2 required).
+
+Or serve it locally if you'd rather not open the file directly:
+
+```bash
+npx serve source
+```
+
+## 🕹️ How to use it
+
+- **Scroll** to move through the cinematic experience
+- **Move your mouse** on the hero screen for parallax
+- **Inspect Machine** (bottom-right button) → click a part of the bike for its spec panel
+- **Build Your Aeron** (Configure section) → pick a body finish, wheel finish, and lighting mode
+- **Enter the Machine** → full cockpit HUD; **Exit Machine** to leave
+- **Sound toggle** (top-right) → ambient engine hum
+
+## 🛠️ Tech stack
+
+- [Three.js](https://threejs.org/) — scene, geometry, materials, lighting
+- `EffectComposer` + `UnrealBloomPass` — post-processing / glow
+- `PMREMGenerator` + `RoomEnvironment` — realistic reflections on metal/carbon
+- Vanilla JavaScript (ES modules) — scroll choreography, UI, configurator logic
+- Web Audio API — ambient sound, no external audio files
+- HTML5 / CSS3 — layout, typography, HUD UI
+
+No React, no bundler, no npm install — everything loads from CDN via an import map.
+
+## 📁 Project structure
+
+```
+aeron-x1/
+├── source/
+│   └── index.html       # entire app: scene, UI, and logic in one file
+├── media/                # thumbnail, gallery images, teaser video
+└── README.md
+```
+
+## 📌 Notes
+
+This is a concept/demo project built for a hackathon-style showcase. The motorcycle is fictional, and the "specs" shown (top speed, range, etc.) are illustrative, not real-world figures.
+
+## 📄 License
+
+MIT — feel free to fork, remix, and build on it.
